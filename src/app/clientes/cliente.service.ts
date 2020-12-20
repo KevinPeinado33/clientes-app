@@ -2,10 +2,10 @@ import { Injectable } from '@angular/core';
 import { Cliente } from './cliente';
 import { Observable, throwError } from 'rxjs';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
-import { map, catchError } from 'rxjs/operators';
+import { map, catchError, tap } from 'rxjs/operators';
 import swal from 'sweetalert2';
 import { Router } from '@angular/router';
-import { throws } from 'assert';
+import { formatDate, DatePipe } from '@angular/common';
 
 @Injectable({
   providedIn: 'root'
@@ -18,14 +18,43 @@ export class ClienteService {
   constructor(private http: HttpClient, private router: Router) { }
 
   getClientes(): Observable<Cliente[]> {
-    return this.http.get<Cliente[]>(this.urlEndPoint);
+    return this.http.get<Cliente[]>(this.urlEndPoint).pipe(
+      tap(response => {
+        let clientes = response as Cliente[];
+        console.log("ClienteService: tap 1");
+        clientes.forEach(
+          cliente => {
+            console.log(cliente.nombre);
+          }
+        )
+      }),
+      map(response => { // el map retorna el objeto modificado
+        let clientes = response as Cliente[];
+        return clientes.map(cliente => { // este map retorna los atributos modificados
+
+          let datePipe = new DatePipe('es');
+          cliente.nombre = cliente.nombre.toUpperCase();
+          // cliente.createAt = datePipe.transform(cliente.createAt, 'EEEE dd, MMMM yyyy');
+          //cliente.createAt = formatDate(cliente.createAt, 'dd/MM/yyyy', 'en-US');
+          return cliente;
+        });
+      }),
+      tap(response => {
+        response.forEach(
+          cliente => {
+            console.log("ClienteService: tap 1")
+            console.log(cliente.nombre);
+          }
+        )
+      })
+    );
   }
 
   create(cliente: Cliente): Observable<Cliente> {
     return this.http.post(this.urlEndPoint, cliente, { headers: this.httpHeaders }).pipe(
-      map( (response: any) => response.cliente as Cliente),
+      map((response: any) => response.cliente as Cliente),
       catchError(e => {
-        if(e.status == 400) {   
+        if (e.status == 400) {
           return throwError(e);
         }
         this.router.navigate(['/clientes']);
@@ -50,7 +79,7 @@ export class ClienteService {
   update(cliente: Cliente): Observable<any> {
     return this.http.put<any>(`${this.urlEndPoint}/${cliente.id}`, cliente, { headers: this.httpHeaders }).pipe(
       catchError(e => {
-        if(e.status == 400) {   
+        if (e.status == 400) {
           return throwError(e);
         }
         this.router.navigate(['/clientes']);
